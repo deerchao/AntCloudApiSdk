@@ -12,6 +12,7 @@ namespace AntCloudApi
 {
     public class AntFinTechApiClient
     {
+        private static readonly HttpClient _uploadHttpClient = new HttpClient();
         private readonly string _endpoint;
         private readonly string _accessKey;
         private readonly string _accessSecret;
@@ -20,6 +21,7 @@ namespace AntCloudApi
         private readonly int _autoRetryLimit;
         private readonly HttpClient _httpClient;
         private readonly string _securityToken;
+
 
         public AntFinTechApiClient(AntFinTechProfile profile)
         {
@@ -40,6 +42,7 @@ namespace AntCloudApi
             _securityToken = profile.SecurityToken;
         }
 
+
         public string EndPoint => _endpoint;
 
         public string AccessKey => _accessKey;
@@ -49,15 +52,10 @@ namespace AntCloudApi
         public bool CheckSign => _checkSign;
 
 
-        private HttpRequestMessage BuildRequest(string endpoint, IReadOnlyDictionary<string, string> request)
-        {
-            return new HttpRequestMessage
-            {
-                RequestUri = new Uri(endpoint),
-                Method = HttpMethod.Post,
-                Content = new FormUrlEncodedContent(request),
-            };
-        }
+        public event EventHandler<IReadOnlyDictionary<string, string>> RequestSending;
+
+        public event EventHandler<string> ResponseRead;
+
 
         public Task<AntCloudClientResponse> Execute(AntCloudClientRequest request)
         {
@@ -76,13 +74,13 @@ namespace AntCloudApi
         }
 
         /// <summary>
-        /// 文件直接上传
+        /// 文件直接上传。不触发事件
         /// </summary>
         /// <param name="uploadUrl">调用相关接口获得的上传网址</param>
         /// <param name="contentType">MIME 类型</param>
         /// <param name="fileData">文件数据</param>
         /// <returns></returns>
-        public async Task UploadFile(string uploadUrl, string contentType, byte[] fileData)
+        public static async Task UploadFile(string uploadUrl, string contentType, byte[] fileData)
         {
             var md5hash = Convert.ToBase64String(MD5.Create().ComputeHash(fileData));
 
@@ -95,20 +93,36 @@ namespace AntCloudApi
             {
                 Content = content,
             };
-            var response = await _httpClient.SendAsync(message);
+            var response = await _uploadHttpClient.SendAsync(message);
             response.EnsureSuccessStatusCode();
+        }
+
+
+        private HttpRequestMessage BuildRequest(string endpoint, IReadOnlyDictionary<string, string> request)
+        {
+            return new HttpRequestMessage
+            {
+                RequestUri = new Uri(endpoint),
+                Method = HttpMethod.Post,
+                Content = new FormUrlEncodedContent(request),
+            };
         }
 
         private async Task<AntCloudClientResponse> SendRequest(AntCloudClientRequest request)
         {
             var retried = 0;
 
-            var message = BuildRequest(_endpoint, request.GetParameters());
+            var parameters = request.GetParameters();
+            var message = BuildRequest(_endpoint, parameters);
 
             while (true)
             {
+                RequestSending?.Invoke(this, parameters);
+
                 var response = await _httpClient.SendAsync(message);
                 var responseString = await response.Content.ReadAsStringAsync();
+
+                ResponseRead?.Invoke(this, responseString);
 
                 JObject wholeJson;
                 try
@@ -132,7 +146,7 @@ namespace AntCloudApi
                 if (responseNode == null)
                     throw new ClientException(SDKConstants.ResultCodes.TRANSPORT_ERROR, "Unexpected gateway response: " + responseString);
 
-                var result = AntCloudClientResponse.Populate(responseNode);
+                var result = AntCloudClientResponse.Create(responseNode);
                 if (result.IsSuccess && _checkSign)
                 {
                     var sign = wholeJson.Value<string>(SDKConstants.ParamKeys.SIGN);

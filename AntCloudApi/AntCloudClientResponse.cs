@@ -10,6 +10,7 @@ namespace AntCloudApi
         {
         }
 
+
         public bool IsSuccess
         {
             get => SDKConstants.ResultCodes.OK.Equals(ResultCode);
@@ -45,17 +46,26 @@ namespace AntCloudApi
             set => _data = value;
         }
 
+
         public T GetData<T>()
         {
             return _data.ToObject<T>();
         }
 
 
-        public static AntCloudClientResponse Populate(JObject o)
+        public static AntCloudClientResponse Create(JObject responseNode)
         {
             return new AntCloudClientResponse
             {
-                _data = o
+                _data = responseNode
+            };
+        }
+
+        public static AntCloudClientResponse Create(string responseNodeJson)
+        {
+            return new AntCloudClientResponse
+            {
+                DataAsString = responseNodeJson,
             };
         }
 
