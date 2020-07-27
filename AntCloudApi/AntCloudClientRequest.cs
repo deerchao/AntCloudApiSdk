@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Text.RegularExpressions;
 using Newtonsoft.Json.Linq;
 
 namespace AntCloudApi
@@ -9,10 +10,40 @@ namespace AntCloudApi
     {
         private readonly Dictionary<string, string> _parameters;
 
+
         public AntCloudClientRequest()
         {
             _parameters = new Dictionary<string, string>();
         }
+
+
+        public string Method
+        {
+            get => GetParameter(SDKConstants.ParamKeys.METHOD);
+            set => PutParameter(SDKConstants.ParamKeys.METHOD, value);
+        }
+
+        public string Version
+        {
+            get => GetParameter(SDKConstants.ParamKeys.VERSION);
+            set => PutParameter(SDKConstants.ParamKeys.VERSION, value);
+        }
+
+        public string ReqMsgId
+        {
+            get => GetParameter(SDKConstants.ParamKeys.REQ_MSG_ID);
+            set => PutParameter(SDKConstants.ParamKeys.REQ_MSG_ID, value);
+        }
+
+
+        public string this[string key]
+        {
+            get => _parameters.TryGetValue(key ?? throw new ArgumentNullException(nameof(key)), out var value)
+                ? value
+                : null;
+            set => _parameters[key ?? throw new ArgumentNullException(nameof(key))] = value;
+        }
+
 
         public void PutParameter(string key, string value)
         {
@@ -74,7 +105,7 @@ namespace AntCloudApi
             {
                 foreach (var property in map.Properties())
                 {
-                    PutJsonToken(path + "." + property.Name, property.Value);
+                    PutJsonToken(path + "." + PascalCaseToSnakeCase(property.Name), property.Value);
                 }
             }
             else if (j is JArray array)
@@ -90,27 +121,14 @@ namespace AntCloudApi
             }
         }
 
+        private static string PascalCaseToSnakeCase(string input)
+        {
+            return Regex.Replace(input, "([a-z](?=[A-Z])|[A-Z](?=[A-Z][a-z]))", "$1_").ToLowerInvariant();
+        }
+
         public IReadOnlyDictionary<string, string> GetParameters()
         {
             return new ReadOnlyDictionary<string, string>(_parameters);
-        }
-
-        public string Method
-        {
-            get => GetParameter(SDKConstants.ParamKeys.METHOD);
-            set => PutParameter(SDKConstants.ParamKeys.METHOD, value);
-        }
-
-        public string Version
-        {
-            get => GetParameter(SDKConstants.ParamKeys.VERSION);
-            set => PutParameter(SDKConstants.ParamKeys.VERSION, value);
-        }
-
-        public string ReqMsgId
-        {
-            get => GetParameter(SDKConstants.ParamKeys.REQ_MSG_ID);
-            set => PutParameter(SDKConstants.ParamKeys.REQ_MSG_ID, value);
         }
     }
 }

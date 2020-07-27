@@ -56,7 +56,7 @@ namespace AntCloudApi
 
         public event EventHandler<string> ResponseRead;
 
-
+                                                        
         public Task<AntCloudClientResponse> Execute(AntCloudClientRequest request)
         {
             if (request == null)
