@@ -1,4 +1,6 @@
-﻿using Newtonsoft.Json.Linq;
+﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using Newtonsoft.Json.Serialization;
 
 namespace AntCloudApi
 {
@@ -47,11 +49,26 @@ namespace AntCloudApi
         }
 
 
-        public T GetData<T>()
+        public T GetData<T>(object key = null)
         {
-            return _data.ToObject<T>();
+            var o = key == null
+                ? _data
+                : _data[key];
+
+            return ToObject<T>(o);
         }
 
+
+        public static T ToObject<T>(JToken o)
+        {
+            return o.ToObject<T>(new JsonSerializer
+            {
+                ContractResolver = new DefaultContractResolver
+                {
+                    NamingStrategy = new SnakeCaseNamingStrategy()
+                }
+            });
+        }
 
         public static AntCloudClientResponse Create(JObject responseNode)
         {
