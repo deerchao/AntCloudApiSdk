@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Text.RegularExpressions;
 using Newtonsoft.Json.Linq;
+using Newtonsoft.Json.Serialization;
 
 namespace AntCloudApi
 {
@@ -115,7 +116,7 @@ namespace AntCloudApi
                     PutJsonToken(path + "." + (i + 1), array[i]);
                 }
             }
-            else if (j != null)
+            else if (!(j is JValue v && v.Value == null))
             {
                 PutParameter(path.Substring(1), j.ToString());
             }
